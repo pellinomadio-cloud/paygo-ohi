@@ -1476,7 +1476,12 @@ const DashboardPage: React.FC = () => {
   
   const wallet = useMemo(() => getWallet(email), [email]);
 
+  const isTaskClaimed = useMemo(() => {
+    return localStorage.getItem(`paygo_task_chix9jacom_${email}`) === 'claimed';
+  }, [email, location.key]);
+
   const quickActions = [
+    ...(!isTaskClaimed ? [{ id: 'tasks', label: 'Tasks', icon: 'fa-tasks', color: 'text-purple-600', bg: 'bg-white' }] : []),
     { id: 'payid', label: 'Buy PAY ID', icon: 'fa-credit-card', color: 'text-yellow-600', bg: 'bg-white' },
     { id: 'watch', label: 'Watch', icon: 'fa-tv', color: 'text-blue-500', bg: 'bg-white' },
     { id: 'airtime', label: 'Airtime', icon: 'fa-signal', color: 'text-green-500', bg: 'bg-white' },
@@ -1488,7 +1493,9 @@ const DashboardPage: React.FC = () => {
   ];
 
   const handleAction = (id: string) => {
-    if (id === 'payid') {
+    if (id === 'tasks') {
+      navigate('/tasks', { state: { name, email } });
+    } else if (id === 'payid') {
       navigate('/buy-pay-id', { state: { name, email } });
     } else if (id === 'profile') {
       navigate('/profile', { state: { name, email } });
@@ -1517,6 +1524,29 @@ const DashboardPage: React.FC = () => {
           <span className="text-white font-bold text-sm tracking-tighter">PAYGO</span>
         </div>
       </div>
+
+      {!isTaskClaimed && (
+        <div 
+          onClick={() => navigate('/tasks', { state: { name, email } })}
+          className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-4 text-white mb-6 shadow-lg flex items-center justify-between cursor-pointer hover:opacity-95 transition-all animate-pulse"
+        >
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+              <i className="fas fa-tasks text-xl text-yellow-300"></i>
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-purple-200">New Task Available</p>
+                <span className="bg-yellow-400 text-purple-950 text-[9px] font-black px-2 py-0.5 rounded-full">+₦70,000</span>
+              </div>
+              <p className="text-xs font-bold">Join @chix9jacom Telegram Channel</p>
+            </div>
+          </div>
+          <div className="bg-white text-purple-900 text-xs font-bold px-3 py-1.5 rounded-xl shrink-0 shadow-sm">
+            Claim
+          </div>
+        </div>
+      )}
       
       <div className="bg-[#6b21a8] rounded-[2rem] p-6 text-white mb-6 shadow-2xl relative overflow-hidden dark:bg-purple-900">
         <div className="flex justify-between items-start mb-5">
@@ -1679,6 +1709,165 @@ const DashboardPage: React.FC = () => {
   );
 };
 
+const TaskPage: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const email = location.state?.email || "";
+  const name = location.state?.name || "User";
+
+  const [hasJoined, setHasJoined] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [claimed, setClaimed] = useState(() => {
+    return localStorage.getItem(`paygo_task_chix9jacom_${email}`) === 'claimed';
+  });
+  const [error, setError] = useState('');
+
+  const handleJoinChannel = () => {
+    window.open("https://t.me/chix9jacom", "_blank");
+    setHasJoined(true);
+    setError('');
+  };
+
+  const handleClaimReward = () => {
+    if (!hasJoined) {
+      setError('Please click "Join Telegram Channel" first to open and join the channel.');
+      return;
+    }
+
+    setVerifying(true);
+    setError('');
+
+    setTimeout(() => {
+      try {
+        const currentWallet = getWallet(email);
+        const updatedWallet: UserWallet = {
+          balance: currentWallet.balance + 70000,
+          transactions: [
+            {
+              id: `task-tg-${Date.now()}`,
+              type: 'Credit',
+              label: 'Telegram Task Reward (@chix9jacom)',
+              amount: 70000,
+              date: new Date().toLocaleDateString()
+            },
+            ...currentWallet.transactions
+          ]
+        };
+        updateWallet(email, updatedWallet);
+        localStorage.setItem(`paygo_task_chix9jacom_${email}`, 'claimed');
+        setVerifying(false);
+        setClaimed(true);
+      } catch (err) {
+        setVerifying(false);
+        setError('Failed to claim reward. Please try again.');
+      }
+    }, 2000);
+  };
+
+  return (
+    <div className="w-full animate-in fade-in duration-500 pb-10 dark:text-white">
+      <div className="flex items-center bg-purple-600 text-white p-3 -mx-8 -mt-8 mb-6">
+        <button onClick={() => navigate('/dashboard', { state: { name, email } })} className="mr-3">
+          <i className="fas fa-arrow-left text-lg"></i>
+        </button>
+        <h1 className="text-lg font-bold">Community Task</h1>
+      </div>
+
+      <div className="bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 text-white p-6 rounded-3xl mb-6 shadow-xl relative overflow-hidden text-center">
+        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-3 border border-white/20">
+          <i className="fab fa-telegram-plane text-3xl text-cyan-300"></i>
+        </div>
+        <p className="text-[10px] font-bold text-cyan-200 uppercase tracking-widest mb-1">Official Task</p>
+        <h2 className="text-xl font-black mb-2">Join @chix9jacom Channel</h2>
+        <p className="text-xs text-purple-200 max-w-xs mx-auto mb-4">
+          Join our official Telegram channel to get ₦70,000 credited directly to your balance!
+        </p>
+        <div className="inline-block bg-yellow-400 text-purple-950 font-black text-lg px-5 py-2 rounded-2xl shadow-md">
+          Reward: +₦70,000
+        </div>
+      </div>
+
+      {claimed ? (
+        <div className="bg-green-50 border border-green-200 text-green-800 p-6 rounded-3xl text-center space-y-4 dark:bg-green-900/30 dark:border-green-800 dark:text-green-300">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto text-green-600 dark:bg-green-800 dark:text-green-200">
+            <i className="fas fa-check-circle text-3xl"></i>
+          </div>
+          <h3 className="text-lg font-bold">Reward Claimed!</h3>
+          <p className="text-xs">
+            ₦70,000 has been successfully added to your wallet balance.
+          </p>
+          <button
+            onClick={() => navigate('/dashboard', { state: { name, email } })}
+            className="w-full h-12 bg-green-600 text-white rounded-2xl font-bold text-sm shadow-md hover:bg-green-700 transition-colors"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      ) : (
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-5 dark:bg-gray-800 dark:border-gray-700">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-xs font-medium animate-shake dark:bg-red-900/30 dark:border-red-800 dark:text-red-300">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div className="flex items-start space-x-3">
+              <div className="w-7 h-7 bg-purple-100 text-purple-700 font-bold rounded-full flex items-center justify-center shrink-0 text-xs dark:bg-purple-900 dark:text-purple-300">
+                1
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-gray-800 dark:text-gray-100">Click to Join Telegram Channel</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">Join @chix9jacom on Telegram</p>
+                <button
+                  onClick={handleJoinChannel}
+                  className="w-full h-12 bg-cyan-600 text-white rounded-2xl font-bold text-xs flex items-center justify-center space-x-2 shadow-md hover:bg-cyan-700 active:scale-95 transition-all"
+                >
+                  <i className="fab fa-telegram-plane text-base"></i>
+                  <span>{hasJoined ? 'Channel Opened (Click to re-open)' : 'Join Telegram Channel'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 my-2 dark:border-gray-700"></div>
+
+            <div className="flex items-start space-x-3">
+              <div className="w-7 h-7 bg-purple-100 text-purple-700 font-bold rounded-full flex items-center justify-center shrink-0 text-xs dark:bg-purple-900 dark:text-purple-300">
+                2
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-gray-800 dark:text-gray-100">Verify & Claim Reward</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">Claim ₦70,000 after joining channel</p>
+                <button
+                  onClick={handleClaimReward}
+                  disabled={verifying}
+                  className={`w-full h-14 text-white rounded-2xl font-bold text-sm flex items-center justify-center space-x-2 shadow-lg transition-all ${
+                    hasJoined
+                      ? 'bg-purple-600 hover:bg-purple-700 active:scale-95 dark:bg-purple-600'
+                      : 'bg-gray-400 cursor-not-allowed opacity-80'
+                  }`}
+                >
+                  {verifying ? (
+                    <>
+                      <i className="fas fa-circle-notch animate-spin"></i>
+                      <span>Verifying Membership...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-gift"></i>
+                      <span>Claim ₦70,000 Reward</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -1788,6 +1977,7 @@ const App: React.FC = () => {
           <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/onboarding" element={<OnboardingWizard />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/tasks" element={<TaskPage />} />
           <Route path="/buy-pay-id" element={<BuyPayIdPage />} />
           <Route path="/transfer" element={<TransferPage />} />
           <Route path="/upgrade" element={<UpgradeAccountPage />} />
